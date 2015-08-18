@@ -45,7 +45,7 @@
 <div class="page-header center"> 
   <h1>Tree Diagram Example <small>Pretty Children</small></h1>
 </div> 
-<form class="form-inline pad-left" id="mount-err-above">
+<form class="form-inline pad-left center" id="mount-err-above">
 <div class="form-group">
 <label for="json">JSON File: </label>
 <input type="file" id="json" onchange="handleFiles(this.files)"> 
@@ -94,6 +94,7 @@ function handleFiles (files)
 // Super Dirty Error Func
 function file_errors (type)
 {
+  rmLoadErr();
   if (type == 0)
   {
     var str = "Oops, something when wrong. Check that your file is valid JSON and try again."
