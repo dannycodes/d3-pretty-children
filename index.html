@@ -32,15 +32,44 @@
 
 function handleFiles (files)
 {
+  // Catch errors off of data read and off JSON parse
+  function file_errors ()
+  {
+    var str = "Oops, something when wrong. Check that your file is valid JSON and try again."
+    var body = document.body;
+    var p = document.createElement('p');
+    p.setAttribute("id", "file_load_error");
+    p.appendChild(document.createTextNode(str));
+    body.appendChild(p);
+  }
+
   var fr = new FileReader();
   console.log(fr)
   fr.readAsBinaryString(files[0]);
   fr.onload = function ()
   { 
+    if (fr.error) 
+    { 
+      file_errors();
+      throw fr.error 
+    };
+    try
+    {
+      data = JSON.parse(fr.result)
+    }
+    catch (e)
+    {
+      file_errors();
+      throw e
+    }
+    // On successful entry rm load err message
+    var load_err = document.getElementById("file_load_error");
+    if (load_err) { document.body.removeChild(load_err); };
     start_d3(JSON.parse(fr.result));
   };
 }
 
+var node_counter = {}
 
 
 function start_d3(file)
@@ -73,21 +102,49 @@ function start_d3(file)
   root.y0 = 0;
 
   function collapse(d) {
-    if (d.children) {
+    if (d.children) 
+    {
       d._children = d.children;
       d._children.forEach(collapse);
       d.children = null;
     }
   }
-
   root.children.forEach(collapse);
   update(root);
+  console.info(root)
   // });
 
   d3.select(self.frameElement).style("height", "800px");
 
   function update(source) {
+    // Visit top level node, find open children
+    function count_children (_source)
+    {
+      // this returns undefined here? 
+      // but at 138 it sets it
+      var depth = _source.depth
 
+      // ignore this part rn it's wrong
+      if (_source._children)
+      {
+        node_counter[depth] = []
+      }
+      if (_source.children)
+      {
+        var children = _source.children
+        // Breadth-wise: store each level as depth
+        if (!node_counter[depth])
+        {
+          node_counter[depth] = [];
+        }
+        node_counter[depth].push(children);
+        // ([].concat.apply([], node_counter[depth])).forEach(count_children);
+      } 
+    }
+
+    count_children(source);
+  
+    console.info(node_counter);
     // Compute the new tree layout.
     var nodes = tree.nodes(root).reverse(),
         links = tree.links(nodes);
