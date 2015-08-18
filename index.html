@@ -1,5 +1,10 @@
 <!DOCTYPE html>
+<head>
 <meta charset="utf-8">
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>  
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.5/js/bootstrap.min.js"></script>
+<link rel='stylesheet' src="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.5/css/bootstrap.min.css">
 <style>
 
 .node {
@@ -22,13 +27,37 @@
   stroke-width: 1.5px;
 }
 
+.center {
+  text-align: center;
+}
+
+#json {
+  margin-left:20px;
+  display:inline-block;
+}
+
+.pad-left {
+  padding-left: 20px;
+}
 </style>
+</head>
 <body>
-<div> 
-<input type="file" id="json" onchange="handleFiles(this.files)">
+<div class="page-header center"> 
+  <h1>Tree Diagram Example <small>Pretty Children</small></h1>
+</div> 
+<form class="form-inline pad-left" id="mount-err-above">
+<div class="form-group">
+<label for="json">JSON File: </label>
+<input type="file" id="json" onchange="handleFiles(this.files)"> 
+<button class="btn btn-primary" type="button" id="collapse" onclick="collapseAll()">Collapse All</button>
+<button class="btn btn-success" type="button" id="expand" onclick="expandAll()">Expand All</button>
+</div>
+</form>
+
+
+
 <!--   <input id="range_bot" type="number" placeholder=" bottom " onchange="handle_range()"> to
   <input id="range_top" type="number" placeholder= " top " onchange="handle_range()"> -->
-</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
 <script>
 
@@ -36,15 +65,6 @@ var file;
 function handleFiles (files)
 {
   // Catch errors off of data read and off JSON parse
-  function file_errors ()
-  {
-    var str = "Oops, something when wrong. Check that your file is valid JSON and try again."
-    var body = document.body;
-    var p = document.createElement('p');
-    p.setAttribute("id", "file_load_error");
-    p.appendChild(document.createTextNode(str));
-    body.appendChild(p);
-  }
 
   var fr = new FileReader();
   console.log(fr)
@@ -53,7 +73,7 @@ function handleFiles (files)
   { 
     if (fr.error) 
     { 
-      file_errors();
+      file_errors(0);
       throw fr.error 
     };
     try
@@ -62,16 +82,63 @@ function handleFiles (files)
     }
     catch (e)
     {
-      file_errors();
+      file_errors(0);
       throw e
     }
-    // On successful entry rm load err message
-    var load_err = document.getElementById("file_load_error");
-    if (load_err) { document.body.removeChild(load_err); };
-    start_d3(JSON.parse(fr.result));
+    rmLoadErr()
+    file = JSON.parse(fr.result)
+    start_d3(file);
   };
 }
 
+// Super Dirty Error Func
+function file_errors (type)
+{
+  if (type == 0)
+  {
+    var str = "Oops, something when wrong. Check that your file is valid JSON and try again."
+  } else if (type == 1){
+    var str = "You haven't entered a file yet"
+  } else {
+    var str = "An error has occurred, please try again."
+  }
+  var body = document.body;
+  var div = document.createElement('div');
+  div.setAttribute("id", "file_load_error");
+  div.setAttribute("class", "alert alert-warning");
+  div.appendChild(document.createTextNode(str));
+  body.insertBefore(div, body.firstChild);
+}
+
+function rmLoadErr()
+{
+    // On successful entry rm load err message
+    var load_err = document.getElementById("file_load_error");
+    if (load_err) { document.body.removeChild(load_err); };
+}
+
+// Collapse All Nodes
+function collapseAll()
+{
+  if (file)
+  {
+    rmLoadErr()
+    start_d3(file);
+  } else {
+    file_errors(1);
+  }
+}
+
+function expandAll()
+{
+  if (file)
+  {
+    rmLoadErr()
+    start_d3(file, true)
+  } else {
+    file_errors(1)
+  }
+}
 // define a global here
 // var range = ["", ""];
 // function handle_range()
@@ -105,25 +172,42 @@ var svg = d3.select("body").append("svg")
 
 d3.select(self.frameElement).style("height", "800px");
 
-function start_d3(file)
+function start_d3(file, toExpand)
 {
-
   root = file;
   root.x0 = height / 2;
   root.y0 = 0;
 
-  function collapse(d) {
-    if (d.children) 
-    {
-      d._children = d.children;
-      d._children.forEach(collapse);
-      d.children = null;
-    }
+  if (toExpand)
+  {
+    root.children.forEach(expand)
+    update(root)
+  } else {
+    root.children.forEach(collapse);
+    update(root);
   }
-  root.children.forEach(collapse);
-  update(root);
 }
-  
+
+// Need to Refactor arbitrary closing fn 
+// To account for expansion (not yet covered)
+function expand(d)
+{
+  if (d._children)
+  {
+    d.children = d._children;
+    d.children.forEach(expand);
+    d._children = null
+  }
+}
+
+function collapse(d) {
+  if (d.children) 
+  {
+    d._children = d.children;
+    d._children.forEach(collapse);
+    d.children = null;
+  }
+}
 
 function update(source, close) {
   
@@ -245,7 +329,7 @@ function click(d) {
 
     var hash = manageNodeTree(d);
     console.log(hash.total)
-    if (hash.total > 45)
+    if (hash.total > 40)
     {
       // remove nodes
       collapse(hash.found);
